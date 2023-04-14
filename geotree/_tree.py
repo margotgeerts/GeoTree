@@ -6,7 +6,7 @@ import joblib
 import warnings
 
 TREE_BALANCE_BIAS = 0
-DEBUG_SPLITS = True
+DEBUG_SPLITS = False
 EPSILON = np.finfo('double').eps
 
 
@@ -86,8 +86,6 @@ def evaluate_splits(generator, X, y, parent_mse, features, geo_features, n, bbox
         elif ((candidate_split.feat1 is None) or (candidate_split.feat2 is None)):
             continue
         gain = evaluate_split(candidate_split, X, y, parent_mse, n)
-        if gain == 0.0:
-            print(f'zero gain: {gain}, {candidate_split}')
         if gain >= best_mse_gain:
             best_mse_gain = gain
             best_split = candidate_split

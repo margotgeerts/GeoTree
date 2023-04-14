@@ -1,5 +1,5 @@
 """
-This is a module to be used as a reference for building other modules
+This is module contains the GeoTree method.
 """
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
@@ -41,15 +41,47 @@ GENERATORS = {
 }
 
 class GeoTreeRegressor(BaseEstimator,RegressorMixin):
-    """ A template estimator to be used as a reference implementation.
-
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
+    """ The GeoTreeRegressor estimator.
 
     Parameters
     ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
+    max_depth : int, default=None
+        The maximum depth of the tree. If None, then nodes are grown 
+        until all leaves are pure or until all leaves contain less 
+        than 2 samples.
+
+    max_features : int, default=None
+        The number of features to sample for each split. If None,
+        then no sampling of features is performed.
+
+    n_jobs : int, default=None
+        The number of jobs to run in parallel. The 'fit' method is
+        parallelized over nodes. If None, then 1 job is run, if -1 then
+        all processors are used.
+
+    random_state : int, RandomState instance or None, default=None
+        Controlls randomness of estimator.
+
+    
+    Attributes
+    ----------
+    tree_ : Tree instance
+    The underlying Tree object.
+
+    generators_ : list of OrthogonalSplitGenerator, DiagonalSplitGenerator and EllipseSplitGenerator instances
+    This list is used to generate the orthogonal, diagonal and ellipse candidate splits.
+
+    n_features_in_ : int
+    The number of features seen during training.
+
+    features_ : list
+    A list of feature names or indices used for training.
+
+    feature_importances_ : ndarray of shape (n_features,)
+    Impurity-based feature importances. Same as scikit-learn feature importances
+    with an additional entry for the combination of geospatial features used in
+    diagonal and ellipse splits.
+
 
     Examples
     --------
@@ -162,8 +194,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
 
         random_state = check_random_state(self.random_state)
 
-        print(self.tree_.max_depth)
-
         i=1
         while self.tree_.get_leafs_to_grow():
 
@@ -214,7 +244,7 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
                         t = copy.deepcopy(self.tree_)
                         trees.append([metrics_test['maetest'],t])
             
-            print(str(i),self.tree_.n_leaves,metrics_r[i])
+            #print(str(i),self.tree_.n_leaves,metrics_r[i])
             self.tree_.set_metrics(metrics_r)
             i+=1
             
