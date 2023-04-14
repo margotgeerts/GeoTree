@@ -8,7 +8,7 @@ from sklearn.utils import resample, check_random_state
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 from time import time
-from . import _tree, _utils, _generators_numba, _generators_ga, _generators_sklearn, _generators_random
+from . import _tree, _utils, _generators_numba, _generators_ga, _generators_sklearn
 from ._generators_numba import OrthogonalSplitGenerator
 from ._generators_ga import DiagonalSplitGenerator, EllipseSplitGenerator
 import copy
@@ -113,7 +113,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
     def fit(self, X, y,
                 generators = "best",
                 ga_params = params,
-                random_params = random_params,
                 features = None, 
                 geo_features = [],
                 CONTINUE_NONE = True,
@@ -152,9 +151,7 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         self.generators_ = GENERATORS[generators]
         if generators == "best":
             self.generators_ = [self.generators_[0], self.generators_[1](**ga_params), self.generators_[2](**ga_params)]
-        if generators == "random":
-            self.generators_ = [gen(k) for (gen, k) in zip(self.generators_, random_params)]
-
+        
         self.features_ = features if features else list(range(X.shape[1]))
         self.max_features =  min(self.max_features, len(self.features_)) if self.max_features else None
 
