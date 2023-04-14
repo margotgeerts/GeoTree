@@ -1,9 +1,9 @@
 # GeoTree
 
-: An Evolutionary Geospatial Regression Tree :
+<p style="center">An Evolutionary Geospatial Regression Tree</p>
 
 ## Dependencies
 
-Deap
-Scikit-learn
-Numpy
+- Numpy
+- Scikit-learn
+- Deap
