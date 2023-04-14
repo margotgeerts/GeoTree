@@ -1,6 +1,6 @@
 # GeoTree
 
-<center>An Evolutionary Geospatial Regression Tree</center>
+<p align="center">An Evolutionary Geospatial Regression Tree</p>
 
 ## Dependencies
 
