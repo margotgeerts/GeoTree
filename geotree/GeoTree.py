@@ -27,8 +27,7 @@ params = {
         "cxpb":0.9, 
         "mutpb":0.2,
         "hofsize":0,
-        "regf":0,
-        "eval_ratio":1.
+        "regf":0
     }
 
 
@@ -49,16 +48,13 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         The maximum depth of the tree. If None, then nodes are grown 
         until all leaves are pure or until all leaves contain less 
         than 2 samples.
-
     max_features : int, default=None
         The number of features to sample for each split. If None,
         then no sampling of features is performed.
-
     n_jobs : int, default=None
         The number of jobs to run in parallel. The 'fit' method is
         parallelized over nodes. If None, then 1 job is run, if -1 then
         all processors are used.
-
     random_state : int, RandomState instance or None, default=None
         Controlls randomness of estimator.
 
@@ -66,21 +62,17 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
     Attributes
     ----------
     tree_ : Tree instance
-    The underlying Tree object.
-
+        The underlying Tree object.
     generators_ : list of OrthogonalSplitGenerator, DiagonalSplitGenerator and EllipseSplitGenerator instances
-    This list is used to generate the orthogonal, diagonal and ellipse candidate splits.
-
+        This list is used to generate the orthogonal, diagonal and ellipse candidate splits.
     n_features_in_ : int
-    The number of features seen during training.
-
+        The number of features seen during training.
     features_ : list
-    A list of feature names or indices used for training.
-
+        A list of feature names or indices used for training.
     feature_importances_ : ndarray of shape (n_features,)
-    Impurity-based feature importances. Same as scikit-learn feature importances
-    with an additional entry for the combination of geospatial features used in
-    diagonal and ellipse splits.
+        Impurity-based feature importances. Same as scikit-learn feature importances
+        with an additional entry for the combination of geospatial features used in
+        diagonal and ellipse splits.
 
 
     Examples
@@ -90,7 +82,7 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
     >>> X = np.arange(100).reshape(100, 1)
     >>> y = np.zeros((100, ))
     >>> estimator = GeoTreeRegressor()
-    >>> estimator.fit(X, y)
+    >>> estimator.fit(X, y, geo_features=[0,1])
     GeoTreeRegressor()
     """
     def __init__(self, max_depth=None, max_features = None, n_jobs=None, random_state=None):
@@ -105,6 +97,24 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         self.random_state = random_state
 
     def fit_while(self, i, r):
+        """Return True if stopping conditions for growing the tree are not satisfied, 
+        otherwise False.
+
+        Parameters
+        ----------
+        i : int 
+            The current depth of the tree.
+        r : int
+            The maximum depth the tree should be grown.
+
+        Returns
+        -------
+        ((i <= r) and a.any()) and (not b.all()) : Bool
+            The current depth is smaller than the maximum depth, and at least one leaf 
+            contains more than two samples, and not all leafs are pure or have constant features.
+        
+
+        """
         a = np.array([(len(leaf.idx) > 2) for leaf in self.tree_.get_leafs()])
         b = np.array([np.all(leaf.y==leaf.y[0]) or np.all(leaf.X==leaf.X[0]) for leaf in self.tree_.get_leafs()])
         if r>0:
@@ -112,8 +122,19 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         else:
             return a.any() and (not b.all())
 
-    def grow_leaf(self, leaf, geo_features, random_state, CONTINUE_NONE, n_RESTART, geosplits, min_area, min_gain):
+    def grow_leaf(self, leaf, geo_features, random_state):
+        """Grow a leaf.
 
+        Parameters
+        ----------
+        leaf : Node instance
+            The leaf node that should be grown.
+        geo_features : list
+            The list of indices that indicate the columns of the geospatial features in the data.
+        random_state: RandomState instance
+            Controls the randomness.
+
+        """
         if self.max_features:
             #print(self.features_, geo_features)
             fs = copy.copy(self.features_)
@@ -133,11 +154,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         leaf.grow(generators=self.generators_,
                     features = fs,
                     geo_features=gfs,
-                    CONTINUE_NONE=CONTINUE_NONE,
-                    n_RESTART=n_RESTART,
-                    geosplits=geosplits,
-                    min_area=min_area,
-                    min_gain=min_gain,
                     n_jobs=self.n_jobs,
                     random_state=random_state
                     )
@@ -146,23 +162,25 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
                 generators = "best",
                 ga_params = params,
                 features = None, 
-                geo_features = [],
-                CONTINUE_NONE = True,
-                n_RESTART = 0,
-                X_test = None, y_test = None,
-                save_fig = False,
-                geosplits = None, min_area = 0.0,
-                early_stopping = None,
-                min_gain = 0.0):
-        """A reference implementation of a fitting function.
+                geo_features = []):
+        """Build a GeoTreeRegressor instance from the training set (X,y) with
+        the given split generators, generator parameters, feature set, and geospatial features.        .
+
 
         Parameters
         ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
+        X : array, shape (n_samples, n_features)
             The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
+        y : array, shape (n_samples,)
+            The target values (real numbers).
+        generators : string or list of generator instances
+            The candidate split generators.
+        ga_params : dict
+            The parameters used for the GA-based generators
+        features : list or None
+            The features to use, if None then use all features.
+        geo_features: list
+            The list of indices that indicate the columns of the geospatial features in the data.
 
         Returns
         -------
@@ -180,8 +198,9 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         X_test = X_test.astype('float32') if X_test is not None else None
         y_test = y_test.astype('float64') if y_test is not None else None
 
-        self.generators_ = GENERATORS[generators]
+        
         if generators == "best":
+            self.generators_ = GENERATORS[generators]
             self.generators_ = [self.generators_[0], self.generators_[1](**ga_params), self.generators_[2](**ga_params)]
         
         self.features_ = features if features else list(range(X.shape[1]))
@@ -219,7 +238,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
             end = time()
 
             # After each depth increase, calculate metrics
-            
             metrics_r[i] = {}
             metrics_r[i] = _tree.calc_metrics(self.tree_.y, self.predict(self.tree_.X))
             metrics_r[i]['time'] = end-start
@@ -230,43 +248,24 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
                 metrics_r[i]['diag_ratio'],\
                     metrics_r[i]['elli_ratio'] = self.tree_.get_split_ratios()
             
-            if X_test is not None:
-                
-                metrics_test = _tree.calc_metrics(y_test, self.predict(X_test), "test")
-                metrics_r[i].update(metrics_test)
-                
-                if early_stopping:
-                    
-                    if (i>0) and (trees[-1][0] < metrics_test['maetest']):
-                        self.tree_ = trees[-1][1]
-                        break
-                    else:
-                        t = copy.deepcopy(self.tree_)
-                        trees.append([metrics_test['maetest'],t])
-            
-            #print(str(i),self.tree_.n_leaves,metrics_r[i])
             self.tree_.set_metrics(metrics_r)
+
             i+=1
-            
-            if save_fig:
-                _utils.plot_decision_boundary(self.tree_.X,self.tree_.y,self.predict)
-                plt.savefig(save_fig+f"_{i}.png")
         
-        # `fit` should always return `self`
         return self
 
     def predict(self, X):
-        """ A reference implementation of a predicting function.
+        """ Predict value for samples in X.
 
         Parameters
         ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
+        X : array, shape (n_samples, n_features)
+            The input samples.
 
         Returns
         -------
-        y : ndarray, shape (n_samples,)
-            Returns an array of ones.
+        y : array, shape (n_samples,)
+            Returns an array of predictions.
         """
         X = check_array(X, accept_sparse=False)
         check_is_fitted(self, 'is_fitted_')
@@ -289,6 +288,21 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         return yhat
 
     def predict_at_depth(self, X, n):
+        """ Predict value for samples in X using the regression tree
+        at depth n.
+
+        Parameters
+        ----------
+        X : array, shape (n_samples, n_features)
+            The input samples.
+        n : int
+            The depth at which to predict.
+
+        Returns
+        -------
+        y : array, shape (n_samples,)
+            Returns an array of predictions.
+        """
         X = check_array(X, accept_sparse=False)
         check_is_fitted(self, 'is_fitted_')
 
@@ -310,13 +324,36 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         return yhat
 
     def get_depth(self):
+        """Return the depth of the decision tree.
+
+        Returns
+        -------
+        self.tree_.curr_depth : int
+            The current depth of the tree.
+        """
         return self.tree_.curr_depth
 
     def get_n_leaves(self):
+        """Return the number of leaves of the decision tree.
+
+        Returns
+        -------
+        len(self.tree_.get_leafs()) : int
+            The number of leaves of the tree.
+        """
         return len(self.tree_.get_leafs())
 
     @property
     def feature_importances_(self, normalize=True):
+        """Return the feature importances.
+        The importance of a feature is computed as the (normalized) total
+        reduction of the MSE due to all splits based on that feature.
+        
+        Returns
+        -------
+        feature_importances_ : ndarray of shape (n_features,)
+            Normalized total reduction of MSE by feature.
+        """
         importances = np.zeros(self.n_features_in_+1, dtype=np.float64)
         for node in self.tree_.get_nodes():
             if node.split:
@@ -333,6 +370,13 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         return importances
 
     def print_splits_depth_first(self, node):
+        """Helper function to recursively print the tree
+
+        Parameters
+        ----------
+        node : Node instance
+            The node to print.
+        """
         if node.split:
             print(' '*node.depth + str(node.split) + f', squared_error= {node.mse}, samples= {len(node.idx)}, value= {node.yhat}')
             self.print_splits_depth_first(node.left)
@@ -341,5 +385,8 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
             print(' '*node.depth +f"Leaf: pred {node.yhat}")
 
     def plot_tree(self):
+        """Print the tree.
+        
+        """
         self.print_splits_depth_first(self.tree_.root)
 
