@@ -1,7 +1,6 @@
 import numpy as np
 from ._splits import *
 from numba import jit, prange
-from ._tree import TREE_BALANCE_BIAS 
 
 FEATURE_THRESHOLD = 1e-7
 

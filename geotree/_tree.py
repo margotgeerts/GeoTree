@@ -304,9 +304,9 @@ class Node:
         """
         return ((self.tree.max_depth and self.depth >= self.tree.max_depth) or # max depth reached
                   len(self.idx) < 2 or # only one sample in node
-                  ((self.gain is not None) and self.gain <= self.min_gain) or # tried to find split but gain is 0
+                  ((self.gain is not None) and self.gain <= EPSILON) or # tried to find split but gain is 0
                   self.mse <= EPSILON or    # mse is 0
-                  np.all(self.X==self.X[geo_features[0]])) # all features are constant
+                  np.all(self.X==self.X[0])) # all features are constant
     
     
     def best_split(self, generators, features, geo_features, n_jobs, random_state):
@@ -327,7 +327,7 @@ class Node:
             parallelized over generators. If None, then 1 job is run, if -1 then
             all processors are used.
         random_state : RandomState instance
-            Controlls the randomness.
+            Controls the randomness.
 
         Returns
         -------
@@ -346,7 +346,7 @@ class Node:
                                                                                                 features,
                                                                                                 geo_features, 
                                                                                                 len(self.tree.y), 
-                                                                                                self.tree.bbox,
+                                                                                                self.tree.bbox(geo_features),
                                                                                                 random_state) for generator in generators))
         
         best_mse_gain = np.max(gains)
@@ -380,8 +380,8 @@ class Node:
         if self.split is None:
             return None, None
         tidx = self.split.is_true(X)
-        idx_left = idx[np.where(~tidx)[geo_features[0]]]
-        idx_right = idx[np.where(tidx)[geo_features[0]]]
+        idx_left = idx[np.where(~tidx)[0]]
+        idx_right = idx[np.where(tidx)[0]]
         return idx_left, idx_right
 
     def grow(self, generators, features, geo_features, n_jobs=None, random_state=None):
@@ -403,7 +403,7 @@ class Node:
             parallelized over generators. If None, then 1 job is run, if -1 then
             all processors are used.
         random_state : RandomState instance
-            Controlls the randomness.
+            Controls the randomness.
         
         """
         best_mse_gain, best_split = self.best_split(generators, features, geo_features, n_jobs, random_state)
@@ -445,7 +445,6 @@ class Tree:
         self.metrics = None
         self.curr_depth = 0
         
-    @property
     def bbox(self, geo_features=[0,1]):
         """
         Calculate the spatial extent of the input data.

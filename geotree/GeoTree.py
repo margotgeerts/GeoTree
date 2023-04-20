@@ -136,7 +136,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
 
         """
         if self.max_features:
-            #print(self.features_, geo_features)
             fs = copy.copy(self.features_)
             for gf in geo_features[1:]:
                 fs.remove(gf)
@@ -146,7 +145,6 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
                 fs = fs + geo_features
                 fs = list(set(fs))
                 gfs = geo_features
-            #print(fs, gfs)
         else:
             fs = self.features_
             gfs = geo_features
@@ -190,13 +188,11 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
         X, y = check_X_y(X, y, accept_sparse=False)
         self.is_fitted_ = True
 
-        trees = []
+
         metrics_r = {}
-        #node_metrics = {}
-        #n=1
+
         self.tree_ = _tree.Tree(X.astype('float32'),y.astype('float64'), self.max_depth)
-        X_test = X_test.astype('float32') if X_test is not None else None
-        y_test = y_test.astype('float64') if y_test is not None else None
+
 
         
         if generators == "best":
@@ -224,12 +220,7 @@ class GeoTreeRegressor(BaseEstimator,RegressorMixin):
             joblib.Parallel(n_jobs=self.n_jobs,require='sharedmem')(
                 joblib.delayed(self.grow_leaf)(leaf,
                                                 geo_features, 
-                                                random_state, 
-                                                CONTINUE_NONE, 
-                                                n_RESTART, 
-                                                geosplits, 
-                                                min_area, 
-                                                min_gain)
+                                                random_state)
                 for leaf in leafs_to_grow
             )
 
